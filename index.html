@@ -14,7 +14,7 @@
     </style>
     <script>
         // Apply saved theme before body renders
-        const savedTheme = localStorage.getItem('theme') || 'light';
+        const savedTheme = localStorage.getItem('theme') || 'dark';
         if (savedTheme === 'dark') {
             // Add style to prevent flash
             const style = document.createElement('style');
@@ -28,7 +28,7 @@
         <label for="theme-select">Тема:</label>
         <select id="theme-select">
             <option value="light">Світла</option>
-            <option value="dark">Темна</option>
+            <option value="dark" selected>Темна</option>
         </select>
     </div>
 
@@ -62,7 +62,6 @@
                         <option value="ukr+eng" selected>Українська + Англійська</option>
                         <option value="ukr">Лише українська</option>
                         <option value="eng">Лише англійська</option>
-                        <option value="rus">Російська</option>
                     </select>
                 </div>
             </div>

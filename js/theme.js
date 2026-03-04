@@ -8,7 +8,7 @@ export function applyTheme(theme, selectElement) {
 }
 
 export function initTheme(selectElement) {
-    const saved = localStorage.getItem('theme') || 'light';
+    const saved = localStorage.getItem('theme') || 'dark';
     applyTheme(saved, selectElement);
     selectElement.addEventListener('change', () => {
         const t = selectElement.value;
