@@ -8,12 +8,124 @@ const modelSelect = document.getElementById('model-select');
 const themeSelect = document.getElementById('theme-select');
 const loadingDiv = document.getElementById('loading');
 
+// user/quota state
+let isVIP = false;
+const userInfoSpan = document.getElementById('status-msg');
+const quotaMsgDiv = document.getElementById('quota-msg');
+
+const QUOTA_LIMIT = 5; // free user simultaneous
+const REFILL_INTERVAL = 5 * 60 * 1000; // 5 minutes in ms
+
+function loadQuota() {
+    const data = JSON.parse(localStorage.getItem('quota') || '{}');
+    return {
+        tokens: data.tokens != null ? data.tokens : QUOTA_LIMIT,
+        lastRefill: data.lastRefill || Date.now()
+    };
+}
+
+function saveQuota(q) {
+    localStorage.setItem('quota', JSON.stringify(q));
+}
+
+function refillQuota() {
+    const q = loadQuota();
+    const now = Date.now();
+    const elapsed = now - q.lastRefill;
+    const intervals = Math.floor(elapsed / REFILL_INTERVAL);
+    if (intervals > 0) {
+        q.tokens = Math.min(QUOTA_LIMIT, q.tokens + intervals);
+        q.lastRefill += intervals * REFILL_INTERVAL;
+        saveQuota(q);
+    }
+    return q;
+}
+
+function canUpload(count=1) {
+    if (isVIP) return true;
+    const q = refillQuota();
+    if (q.tokens >= count) {
+        q.tokens -= count;
+        saveQuota(q);
+        return true;
+    }
+    return false;
+}
+
+function updateQuotaDisplay() {
+    if (isVIP) {
+        quotaMsgDiv.textContent = 'VIP: необмежено';
+    } else {
+        const q = refillQuota();
+        let msg = `Доступні спроби: ${q.tokens}`;
+        if (q.tokens < QUOTA_LIMIT) {
+            const nextIn = REFILL_INTERVAL - (Date.now() - q.lastRefill);
+            const mins = Math.ceil(nextIn / 60000);
+            msg += `. Наступна за ${mins} хв.`;
+        }
+        quotaMsgDiv.textContent = msg;
+    }
+}
+
+// call periodically to refresh message
+setInterval(updateQuotaDisplay, 10000);
+updateQuotaDisplay();
+
+// Google sign-in setup (using Identity Services)
+const loginBtn = document.getElementById('login-btn');
+
+function handleGoogleResponse(response) {
+    // simple VIP flag, not verifying token here for demo
+    if (response.credential) {
+        isVIP = true;
+        userInfoSpan.textContent = '(VIP)';
+        quotaMsgDiv.textContent = 'VIP: необмежено';
+    }
+}
+
+// load Google script
+(function(){
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.onload = () => {
+        google.accounts.id.initialize({
+            client_id: 'YOUR_GOOGLE_CLIENT_ID',
+            callback: handleGoogleResponse
+        });
+        google.accounts.id.renderButton(loginBtn, { theme: 'outline', size: 'small' });
+    };
+    document.head.appendChild(script);
+})();
+
 // initialize theme from storage or default
 function applyTheme(theme) {
     document.body.classList.remove('light', 'dark');
     document.body.classList.add(theme);
     themeSelect.value = theme;
 }
+
+// batch handler for multiple files with quota enforcement
+function handleFiles(files) {
+    if (!files.length) return;
+    const count = files.length;
+    if (!canUpload(count)) {
+        alert('Перевищено ліміт. Зачекайте або увійдіть у Google для VIP-доступу.');
+        updateQuotaDisplay();
+        return;
+    }
+
+    // clear previous results when starting a new batch
+    textOutput.value = '';
+    resultDiv.style.display = 'none';
+
+    // process sequentially and append results
+    (async () => {
+        for (const file of files) {
+            await processImage(file);
+        }
+    })();
+}
+
 
 const savedTheme = localStorage.getItem('theme') || 'light';
 applyTheme(savedTheme);
@@ -29,10 +141,8 @@ dropZone.addEventListener('click', () => {
 });
 
 fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        processImage(file);
-    }
+    const files = Array.from(e.target.files);
+    handleFiles(files);
 });
 
 dropZone.addEventListener('dragover', (e) => {
@@ -47,9 +157,9 @@ dropZone.addEventListener('dragleave', () => {
 dropZone.addEventListener('drop', (e) => {
     e.preventDefault();
     dropZone.classList.remove('dragover');
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith('image/')) {
-        processImage(file);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+    if (files.length) {
+        handleFiles(files);
     } else {
         alert('Будь ласка, виберіть зображення.');
     }
@@ -138,7 +248,8 @@ async function processImage(file) {
 
         const { data: { text } } = await Tesseract.recognize(processedImage, 'ukr+eng', recognitionOptions);
 
-        textOutput.value = text;
+        // append each file result
+        textOutput.value += `\n\n=== ${file.name} ===\n` + text;
         resultDiv.style.display = 'block';
     } catch (error) {
         console.error(error);

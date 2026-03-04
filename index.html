@@ -18,9 +18,14 @@
     <div class="container">
         <h1>Аналізатор тексту на фото</h1>
         <p>Перетягніть фото сюди або натисніть, щоб вибрати файл.</p>
+        <div id="user-info" class="user-info">
+            <button id="login-btn">Увійти через Google</button>
+            <span id="status-msg">(гость)</span>
+            <div id="quota-msg" class="quota-msg"></div>
+        </div>
         <div id="drop-zone" class="drop-zone">
             <p>Перетягніть фото тут</p>
-            <input type="file" id="file-input" accept="image/*" style="display: none;">
+            <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
         </div>
         <div id="model-selection" class="model-selection">
             <label for="model-select">Вибір моделі:</label>

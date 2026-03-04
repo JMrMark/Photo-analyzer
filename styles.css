@@ -36,6 +36,30 @@ body.dark {
     color: inherit;
 }
 
+.user-info {
+    margin-bottom: 10px;
+}
+
+.user-info button {
+    background-color: var(--accent-color);
+    color: white;
+    border: none;
+    padding: 4px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    margin-right: 8px;
+}
+
+.user-info span {
+    font-weight: bold;
+}
+
+.quota-msg {
+    margin-top: 4px;
+    font-size: 0.9em;
+    color: var(--accent-color);
+}
+
 .drop-zone {
     border: 2px dashed #ccc;
     border-radius: 8px;
