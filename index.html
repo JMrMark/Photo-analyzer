@@ -13,11 +13,12 @@
         }
     </style>
     <script>
-        // Apply saved theme before body renders
+        // Apply saved theme before body renders to prevent flash
         const savedTheme = localStorage.getItem('theme') || 'dark';
         if (savedTheme === 'dark') {
-            // Add style to prevent flash
+            // Add style to prevent flash for dark theme
             const style = document.createElement('style');
+            style.setAttribute('data-theme', 'dark');
             style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; }';
             document.head.appendChild(style);
         }
