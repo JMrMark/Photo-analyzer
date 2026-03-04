@@ -1,7 +1,10 @@
 // auth.js
-// quota management and Google login stub
+// quota management and Google login
 
-export let isVIP = false;
+let userState = {
+    isVIP: false
+};
+
 export const QUOTA_LIMIT = 5;
 export const REFILL_INTERVAL = 5 * 60 * 1000;
 
@@ -31,7 +34,7 @@ export function refillQuota() {
 }
 
 export function canUpload(count = 1) {
-    if (isVIP) return true;
+    if (userState.isVIP) return true;
     const q = refillQuota();
     if (q.tokens >= count) {
         q.tokens -= count;
@@ -42,7 +45,7 @@ export function canUpload(count = 1) {
 }
 
 export function updateQuotaDisplay(quotaElem) {
-    if (isVIP) {
+    if (userState.isVIP) {
         quotaElem.textContent = 'VIP: необмежено';
     } else {
         const q = refillQuota();
@@ -59,20 +62,27 @@ export function updateQuotaDisplay(quotaElem) {
 export function initGoogleLogin(clientId, btnElement, userInfoElem, quotaElem) {
     function handleGoogleResponse(response) {
         if (response.credential) {
-            isVIP = true;
+            userState.isVIP = true;
             userInfoElem.textContent = '(VIP)';
             quotaElem.textContent = 'VIP: необмежено';
+            console.log('User signed in as VIP');
         }
     }
 
+    // Load Google script
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
     script.onload = () => {
-        google.accounts.id.initialize({
-            client_id: clientId,
-            callback: handleGoogleResponse
-        });
-        google.accounts.id.renderButton(btnElement, { theme: 'outline', size: 'small' });
+        console.log('Google Sign-In script loaded');
+        if (window.google) {
+            google.accounts.id.initialize({
+                client_id: clientId,
+                callback: handleGoogleResponse
+            });
+            google.accounts.id.renderButton(btnElement, { theme: 'outline', size: 'small' });
+        }
     };
     document.head.appendChild(script);
 }
