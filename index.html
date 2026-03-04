@@ -5,10 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OCR Фото Аналізатор</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        /* Prevent theme flash on page load */
+        body {
+            background-color: #f4f4f4;
+            color: #333;
+        }
+    </style>
     <script>
-        // Apply theme immediately before anything renders
+        // Apply saved theme before body renders
         const savedTheme = localStorage.getItem('theme') || 'light';
-        document.documentElement.setAttribute('data-theme', savedTheme);
+        if (savedTheme === 'dark') {
+            // Add style to prevent flash
+            const style = document.createElement('style');
+            style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; }';
+            document.head.appendChild(style);
+        }
     </script>
 </head>
 <body>

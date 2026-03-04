@@ -5,9 +5,13 @@ console.log('OCR App starting...');
 
 // ========== THEME MODULE ==========
 function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
+    document.body.classList.remove('dark-theme');
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+    }
     const select = document.getElementById('theme-select');
     if (select) select.value = theme;
+    console.log('Theme applied:', theme);
 }
 
 function initTheme() {

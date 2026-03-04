@@ -4,7 +4,7 @@
     --accent-hover: #0056b3;
 }
 
-:root[data-theme="dark"] {
+body.dark-theme {
     --container-bg: #2a2a3d;
     --accent-color: #ff4081;
     --accent-hover: #e91e63;
@@ -17,17 +17,13 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    height: 100vh;
+    min-height: 100vh;
     transition: background-color 0.3s, color 0.3s;
-}
-
-/* light theme (default) */
-body {
     background-color: #f4f4f4;
     color: #333;
 }
 
-body[data-theme="dark"] {
+body.dark-theme {
     background-color: #1e1e2f;
     color: #eee;
 }
