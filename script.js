@@ -34,6 +34,8 @@ dropZone.addEventListener('drop', (e) => {
     } else {
         alert('Будь ласка, виберіть зображення.');
     }
+});
+
 async function preprocessImage(file) {
     return new Promise((resolve, reject) => {
         const img = new Image();
