@@ -19,13 +19,13 @@ body {
     align-items: center;
     min-height: 100vh;
     transition: background-color 0.3s, color 0.3s;
-    background-color: #f4f4f4;
-    color: #333;
+    background-color: #f4f4f4 !important;
+    color: #333 !important;
 }
 
 body.dark-theme {
-    background-color: #1e1e2f;
-    color: #eee;
+    background-color: #1e1e2f !important;
+    color: #eee !important;
 }
 
 /* theme toggle control */
@@ -176,7 +176,7 @@ button:hover {
 /* container adjustments for better contrast with themes */
 .container {
     text-align: center;
-    background: var(--container-bg);
+    background: var(--container-bg) !important;
     padding: 20px;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);

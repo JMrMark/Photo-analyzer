@@ -8,7 +8,7 @@ export function applyTheme(theme, selectElement) {
         if (!existingStyle) {
             const style = document.createElement('style');
             style.setAttribute('data-theme', 'dark');
-            style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; }';
+            style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; } .container { background-color: #2a2a3d !important; }';
             document.head.appendChild(style);
         }
     } else {

@@ -3,9 +3,7 @@
 
 console.log('OCR App starting...');
 
-// Make functions global for ocr.js module
-window.updateProgress = updateProgress;
-window.resetProgress = resetProgress;
+// ========== THEME MODULE ==========
 function applyTheme(theme) {
     document.body.classList.remove('dark-theme');
     if (theme === 'dark') {
@@ -15,7 +13,7 @@ function applyTheme(theme) {
         if (!existingStyle) {
             const style = document.createElement('style');
             style.setAttribute('data-theme', 'dark');
-            style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; }';
+            style.textContent = 'body { background-color: #1e1e2f !important; color: #eee !important; } .container { background-color: #2a2a3d !important; }';
             document.head.appendChild(style);
         }
     } else {
@@ -97,24 +95,26 @@ function updateQuotaDisplay(quotaElem) {
     }
 }
 
-function initGoogleLogin(btnElement, userInfoElem, quotaElem) {
+function initGoogleLogin(clientId, btnElement, userInfoElem, quotaElem) {
+    function handleGoogleResponse(response) {
+        if (response.credential) {
+            userState.isVIP = true;
+            userInfoElem.textContent = '(VIP)';
+            quotaElem.textContent = 'VIP: необмежено';
+            console.log('User signed in as VIP');
+        }
+    }
+
+    // Load Google script
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
     script.async = true;
     script.defer = true;
     script.onload = () => {
-        console.log('Google Sign-In loaded');
+        console.log('Google Sign-In script loaded');
         if (window.google) {
-            function handleGoogleResponse(response) {
-                if (response.credential) {
-                    userState.isVIP = true;
-                    userInfoElem.textContent = '(VIP)';
-                    quotaElem.textContent = 'VIP: необмежено';
-                    console.log('User signed in as VIP');
-                }
-            }
             google.accounts.id.initialize({
-                client_id: 'YOUR_GOOGLE_CLIENT_ID',
+                client_id: clientId,
                 callback: handleGoogleResponse
             });
             google.accounts.id.renderButton(btnElement, { theme: 'outline', size: 'small' });
@@ -132,13 +132,14 @@ async function preprocessImage(file, documentType = 'document', enhance = true) 
                 try {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    
-                    let scale = 1;
+
+                    // Upscale if image is too small
                     const minSize = 500;
+                    let scale = 1;
                     if (img.width < minSize || img.height < minSize) {
                         scale = Math.ceil(minSize / Math.min(img.width, img.height));
                     }
-                    
+
                     canvas.width = img.width * scale;
                     canvas.height = img.height * scale;
 
@@ -146,83 +147,32 @@ async function preprocessImage(file, documentType = 'document', enhance = true) 
                     let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     let data = imageData.data;
 
+                    // Enhanced preprocessing
                     if (enhance) {
-                        // Grayscale
+                        // Step 1: Convert to grayscale with proper luminosity formula
                         for (let i = 0; i < data.length; i += 4) {
-                            const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+                            const r = data[i];
+                            const g = data[i + 1];
+                            const b = data[i + 2];
+                            // Proper luminosity formula
+                            const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
                             data[i] = gray;
                             data[i + 1] = gray;
                             data[i + 2] = gray;
                         }
 
-                        // Adaptive contrast
+                        // Step 2: Apply CLAHE-like contrast enhancement
                         const blockSize = 32;
-                        const width = canvas.width;
-                        const height = canvas.height;
-                        for (let by = 0; by < height; by += blockSize) {
-                            for (let bx = 0; bx < width; bx += blockSize) {
-                                const endY = Math.min(by + blockSize, height);
-                                const endX = Math.min(bx + blockSize, width);
+                        applyLocalContrastEnhancement(data, canvas.width, canvas.height, blockSize);
 
-                                let min = 255, max = 0;
-                                for (let py = by; py < endY; py++) {
-                                    for (let px = bx; px < endX; px++) {
-                                        const idx = (py * width + px) * 4;
-                                        const val = data[idx];
-                                        min = Math.min(min, val);
-                                        max = Math.max(max, val);
-                                    }
-                                }
+                        // Step 3: Adaptive binarization instead of global threshold
+                        data = adaptiveBinarization(data, canvas.width, canvas.height);
 
-                                const range = max - min || 1;
-                                for (let py = by; py < endY; py++) {
-                                    for (let px = bx; px < endX; px++) {
-                                        const idx = (py * width + px) * 4;
-                                        const val = data[idx];
-                                        const enhanced = ((val - min) / range) * 255;
-                                        data[idx] = enhanced;
-                                        data[idx + 1] = enhanced;
-                                        data[idx + 2] = enhanced;
-                                    }
-                                }
-                            }
-                        }
-
-                        // Otsu threshold
-                        const histogram = new Array(256).fill(0);
-                        for (let i = 0; i < data.length; i += 4) {
-                            histogram[data[i]]++;
-                        }
-
-                        let threshold = 128;
-                        let sum = 0;
-                        for (let i = 0; i < 256; i++) sum += i * histogram[i];
-
-                        let sumB = 0, wB = 0, max = 0;
-                        for (let i = 0; i < 256; i++) {
-                            wB += histogram[i];
-                            if (wB === 0) continue;
-                            const wF = data.length / 4 - wB;
-                            if (wF === 0) break;
-                            sumB += i * histogram[i];
-                            const mB = sumB / wB;
-                            const mF = (sum - sumB) / wF;
-                            const between = wB * wF * Math.pow(mB - mF, 2);
-                            if (between > max) {
-                                max = between;
-                                threshold = i;
-                            }
-                        }
-
-                        // Binarization
-                        for (let i = 0; i < data.length; i += 4) {
-                            const val = data[i] > threshold ? 255 : 0;
-                            data[i] = val;
-                            data[i + 1] = val;
-                            data[i + 2] = val;
-                        }
+                        // Step 4: Morphological operations to clean noise
+                        data = morphologicalClose(data, canvas.width, canvas.height);
                     } else {
-                        // Simple preprocessing
+                        // Simple preprocessing for speed
+                        // Grayscale
                         for (let i = 0; i < data.length; i += 4) {
                             const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
                             data[i] = gray;
@@ -230,6 +180,7 @@ async function preprocessImage(file, documentType = 'document', enhance = true) 
                             data[i + 2] = gray;
                         }
 
+                        // Simple contrast
                         const contrast = 1.2;
                         const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
                         for (let i = 0; i < data.length; i += 4) {
@@ -238,7 +189,8 @@ async function preprocessImage(file, documentType = 'document', enhance = true) 
                             data[i + 2] = Math.max(0, Math.min(255, factor * (data[i + 2] - 128) + 128));
                         }
 
-                        const threshold = 128;
+                        // Simple global threshold
+                        const threshold = getOtsuThreshold(data);
                         for (let i = 0; i < data.length; i += 4) {
                             const val = data[i] > threshold ? 255 : 0;
                             data[i] = val;
@@ -261,189 +213,398 @@ async function preprocessImage(file, documentType = 'document', enhance = true) 
     });
 }
 
-async function recognize(file, documentType = 'document', language = 'ukr+eng', enhance = true) {
-    try {
-        console.log('Advanced recognition:', file.name, 'Type:', documentType);
-        const processedImage = await preprocessImage(file, documentType, enhance);
-        
-        let recognitionOptions = {
-            logger: m => {
-                console.log(m);
-                // Update progress bar based on Tesseract messages
-                if (m.status === 'recognizing text') {
-                    const progress = Math.min(90, Math.max(10, m.progress * 100));
-                    updateProgress(progress);
+// Get Otsu threshold for optimal binarization
+function getOtsuThreshold(data) {
+    const histogram = new Array(256).fill(0);
+    for (let i = 0; i < data.length; i += 4) {
+        histogram[data[i]]++;
+    }
+
+    const total = data.length / 4;
+    let sum = 0;
+    for (let i = 0; i < 256; i++) {
+        sum += i * histogram[i];
+    }
+
+    let sumB = 0;
+    let wB = 0;
+    let wF = 0;
+    let mB;
+    let mF;
+    let max = 0;
+    let threshold = 0;
+    let between;
+    let variance;
+
+    for (let i = 0; i < 256; i++) {
+        wB += histogram[i];
+        if (wB == 0) continue;
+        wF = total - wB;
+        if (wF == 0) break;
+        sumB += i * histogram[i];
+        mB = sumB / wB;
+        mF = (sum - sumB) / wF;
+        between = wB * wF * (mB - mF) * (mB - mF);
+        if (between > max) {
+            max = between;
+            threshold = i;
+        }
+    }
+    return threshold;
+}
+
+// Apply local contrast enhancement (CLAHE-like)
+function applyLocalContrastEnhancement(data, width, height, blockSize) {
+    const blocksX = Math.ceil(width / blockSize);
+    const blocksY = Math.ceil(height / blockSize);
+
+    for (let by = 0; by < blocksY; by++) {
+        for (let bx = 0; bx < blocksX; bx++) {
+            const startX = bx * blockSize;
+            const startY = by * blockSize;
+            const endX = Math.min(startX + blockSize, width);
+            const endY = Math.min(startY + blockSize, height);
+
+            // Calculate local histogram
+            const localHist = new Array(256).fill(0);
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    const idx = (y * width + x) * 4;
+                    localHist[data[idx]]++;
                 }
             }
-        };
 
-        switch (documentType) {
-            case 'receipt':
-                recognitionOptions.tessedit_pageseg_mode = 6;
-                break;
-            case 'handwriting':
-                recognitionOptions.tessedit_pageseg_mode = 3;
-                break;
-            case 'quality':
-                recognitionOptions.tessedit_pageseg_mode = 11;
-                break;
-            default:
-                recognitionOptions.tessedit_pageseg_mode = 3;
+            // Apply CLAHE transformation
+            const cdf = new Array(256);
+            cdf[0] = localHist[0];
+            for (let i = 1; i < 256; i++) {
+                cdf[i] = cdf[i - 1] + localHist[i];
+            }
+
+            const cdfMin = Math.min(...cdf.filter(v => v > 0));
+            const cdfMax = cdf[255];
+            const clipLimit = (endX - startX) * (endY - startY) * 0.1;
+
+            // Clip histogram
+            let clipped = 0;
+            for (let i = 0; i < 256; i++) {
+                if (localHist[i] > clipLimit) {
+                    clipped += localHist[i] - clipLimit;
+                    localHist[i] = clipLimit;
+                }
+            }
+
+            // Redistribute clipped pixels
+            const bonus = clipped / 256;
+            for (let i = 0; i < 256; i++) {
+                localHist[i] += bonus;
+            }
+
+            // Recalculate CDF
+            cdf[0] = localHist[0];
+            for (let i = 1; i < 256; i++) {
+                cdf[i] = cdf[i - 1] + localHist[i];
+            }
+
+            // Apply transformation
+            for (let y = startY; y < endY; y++) {
+                for (let x = startX; x < endX; x++) {
+                    const idx = (y * width + x) * 4;
+                    const val = data[idx];
+                    data[idx] = data[idx + 1] = data[idx + 2] = Math.round(((cdf[val] - cdfMin) / (cdfMax - cdfMin)) * 255);
+                }
+            }
         }
-
-        console.log('Recognition with language:', language);
-        const { data: { text, confidence } } = await Tesseract.recognize(processedImage, language, recognitionOptions);
-        
-        // Post-process text
-        let processed = text
-            .replace(/\s{2,}/g, ' ')
-            .trim();
-
-        return {
-            text: processed,
-            confidence: Math.max(0, Math.min(100, confidence || 0))
-        };
-    } catch (err) {
-        console.error('Recognition error:', err);
-        throw err;
     }
 }
 
-// ========== MAIN APP ==========
-document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM ready, initializing app...');
+// Adaptive binarization using Niblack's method
+function adaptiveBinarization(data, width, height) {
+    const windowSize = 15;
+    const k = -0.2;
+    const output = new Uint8ClampedArray(data.length);
 
-    const dropZone = document.getElementById('drop-zone');
-    const fileInput = document.getElementById('file-input');
-    const resultDiv = document.getElementById('result');
-    const textOutput = document.getElementById('text-output');
-    const downloadBtn = document.getElementById('download-btn');
-    const clearBtn = document.getElementById('clear-btn');
-    const modelSelect = document.getElementById('model-select');
-    const themeSelect = document.getElementById('theme-select');
-    const languageSelect = document.getElementById('language-select');
-    const enhanceCheckbox = document.getElementById('enhance-checkbox');
-    const loadingDiv = document.getElementById('loading');
-    const userInfoSpan = document.getElementById('status-msg');
-    const quotaMsgDiv = document.getElementById('quota-msg');
-    const loginBtn = document.getElementById('login-btn');
+    for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+            const idx = (y * width + x) * 4;
 
-    if (!dropZone) {
-        console.error('Critical elements not found!');
+            // Calculate local mean and std dev
+            let sum = 0;
+            let sumSq = 0;
+            let count = 0;
+
+            const half = Math.floor(windowSize / 2);
+            for (let wy = Math.max(0, y - half); wy <= Math.min(height - 1, y + half); wy++) {
+                for (let wx = Math.max(0, x - half); wx <= Math.min(width - 1, x + half); wx++) {
+                    const widx = (wy * width + wx) * 4;
+                    const val = data[widx];
+                    sum += val;
+                    sumSq += val * val;
+                    count++;
+                }
+            }
+
+            const mean = sum / count;
+            const variance = (sumSq / count) - (mean * mean);
+            const std = Math.sqrt(Math.max(0, variance));
+            const threshold = mean + k * std;
+
+            const val = data[idx] > threshold ? 255 : 0;
+            output[idx] = output[idx + 1] = output[idx + 2] = val;
+            output[idx + 3] = 255;
+        }
+    }
+
+    return output;
+}
+
+// Morphological close operation to remove noise
+function morphologicalClose(data, width, height) {
+    const output = new Uint8ClampedArray(data.length);
+
+    // Dilation followed by erosion
+    const temp = morphologicalDilate(data, width, height);
+    return morphologicalErode(temp, width, height);
+}
+
+function morphologicalDilate(data, width, height) {
+    const output = new Uint8ClampedArray(data.length);
+    const kernel = [[1, 1, 1], [1, 1, 1], [1, 1, 1]];
+
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            let max = 0;
+            for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                    const idx = ((y + ky) * width + (x + kx)) * 4;
+                    max = Math.max(max, data[idx]);
+                }
+            }
+            const idx = (y * width + x) * 4;
+            output[idx] = output[idx + 1] = output[idx + 2] = max;
+            output[idx + 3] = 255;
+        }
+    }
+
+    return output;
+}
+
+function morphologicalErode(data, width, height) {
+    const output = new Uint8ClampedArray(data.length);
+    const kernel = [[1, 1, 1], [1, 1, 1], [1, 1, 1]];
+
+    for (let y = 1; y < height - 1; y++) {
+        for (let x = 1; x < width - 1; x++) {
+            let min = 255;
+            for (let ky = -1; ky <= 1; ky++) {
+                for (let kx = -1; kx <= 1; kx++) {
+                    const idx = ((y + ky) * width + (x + kx)) * 4;
+                    min = Math.min(min, data[idx]);
+                }
+            }
+            const idx = (y * width + x) * 4;
+            output[idx] = output[idx + 1] = output[idx + 2] = min;
+            output[idx + 3] = 255;
+        }
+    }
+
+    return output;
+}
+
+async function recognize(file, lang = 'ukr+eng', documentType = 'document') {
+    try {
+        console.log('Starting OCR recognition...');
+
+        // Preprocess image
+        const processedBlob = await preprocessImage(file, documentType, true);
+        console.log('Image preprocessing completed');
+
+        // Load Tesseract
+        if (!window.Tesseract) {
+            throw new Error('Tesseract.js not loaded');
+        }
+
+        const result = await window.Tesseract.recognize(processedBlob, lang, {
+            logger: m => {
+                if (m.status === 'recognizing text') {
+                    window.updateProgress && window.updateProgress(Math.round(m.progress * 100));
+                }
+            }
+        });
+
+        console.log('OCR recognition completed');
+        return result.data.text;
+    } catch (error) {
+        console.error('OCR recognition failed:', error);
+        throw error;
+    }
+}
+
+// ========== MAIN MODULE ==========
+
+// Progress functions
+function updateProgress(percent) {
+    const progressFill = document.getElementById('progress-fill');
+    if (progressFill) {
+        progressFill.style.width = percent + '%';
+    }
+}
+
+function resetProgress() {
+    updateProgress(0);
+}
+
+// Make functions global for ocr.js module
+window.updateProgress = updateProgress;
+window.resetProgress = resetProgress;
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+const resultDiv = document.getElementById('result');
+const textOutput = document.getElementById('text-output');
+const downloadBtn = document.getElementById('download-btn');
+const clearBtn = document.getElementById('clear-btn');
+const modelSelect = document.getElementById('model-select');
+const themeSelect = document.getElementById('theme-select');
+const loadingDiv = document.getElementById('loading');
+
+const userInfoSpan = document.getElementById('status-msg');
+const quotaMsgDiv = document.getElementById('quota-msg');
+const loginBtn = document.getElementById('login-btn');
+
+// Verify all elements loaded
+if (!dropZone || !fileInput) {
+    console.error('Critical DOM elements not found!');
+}
+
+console.log('DOM elements loaded, initializing...');
+
+// Initialize features
+initTheme();
+updateQuotaDisplay(quotaMsgDiv);
+setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
+initGoogleLogin('YOUR_GOOGLE_CLIENT_ID', loginBtn, userInfoSpan, quotaMsgDiv);
+
+async function handleFiles(files) {
+    if (!files || files.length === 0) return;
+
+    console.log('Handling files:', files.length);
+
+    // Check quota
+    if (!canUpload(files.length)) {
+        alert('Недостатньо спроб. Увійдіть як VIP або зачекайте поповнення квоти.');
         return;
     }
 
-    // Initialize
-    initTheme();
-    updateQuotaDisplay(quotaMsgDiv);
-    setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
-    initGoogleLogin(loginBtn, userInfoSpan, quotaMsgDiv);
+    // Show loading
+    loadingDiv.style.display = 'block';
+    resultDiv.style.display = 'none';
+    resetProgress();
 
-    function handleFiles(files) {
-        if (!files.length) return;
-        console.log('Handling files:', files.length);
-        
-        if (!canUpload(files.length)) {
-            alert('Перевищено ліміт. Зачекайте або увійдіть у Google для VIP-доступу.');
-            updateQuotaDisplay(quotaMsgDiv);
-            return;
+    try {
+        const results = [];
+        for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            console.log(`Processing file ${i + 1}/${files.length}:`, file.name);
+
+            const lang = document.getElementById('lang-select')?.value || 'ukr+eng';
+            const model = modelSelect?.value || 'document';
+
+            const text = await recognize(file, lang, model);
+            results.push(text);
         }
 
-        textOutput.value = '';
-        resultDiv.style.display = 'none';
-        if (loadingDiv) loadingDiv.style.display = 'block';
-    resetProgress(); // Reset progress at start
-        const enhance = enhanceCheckbox.checked;
+        const combinedText = results.join('\n\n--- Новий файл ---\n\n');
+        textOutput.value = combinedText;
+        resultDiv.style.display = 'block';
 
-        (async () => {
-            try {
-                for (const file of files) {
-                    console.log('Processing file:', file.name, 'Type:', documentType, 'Lang:', language, 'Enhance:', enhance);
-                    const result = await recognize(file, documentType, language, enhance);
-                    const confidence = result.confidence ? `[${result.confidence.toFixed(1)}%]` : '';
-                    textOutput.value += `\n\n=== ${file.name} ${confidence} ===\n` + result.text;
-                    resultDiv.style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                alert('Помилка: ' + error.message);
-            } finally {
-                updateProgress(100); // Complete progress
-                if (loadingDiv) loadingDiv.style.display = 'none';
-            }
-        })();
+        console.log('All files processed successfully');
+    } catch (error) {
+        console.error('Error processing files:', error);
+        alert('Помилка при обробці файлів: ' + error.message);
+    } finally {
+        loadingDiv.style.display = 'none';
+    }
+}
+
+// Event listeners
+dropZone.addEventListener('click', () => {
+    fileInput.click();
+});
+
+fileInput.addEventListener('change', (e) => {
+    handleFiles(Array.from(e.target.files));
+});
+
+dropZone.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    dropZone.classList.add('drag-over');
+});
+
+dropZone.addEventListener('dragleave', () => {
+    dropZone.classList.remove('drag-over');
+});
+
+dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const files = Array.from(e.dataTransfer.files).filter(file => file.type.startsWith('image/'));
+    handleFiles(files);
+});
+
+// Clipboard paste support
+document.addEventListener('paste', (e) => {
+    console.log('Paste event detected');
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+    if (!imageItems.length) {
+        console.log('No images found in clipboard');
+        return;
     }
 
-    // Events
-    dropZone.addEventListener('click', () => fileInput.click());
-    fileInput.addEventListener('change', e => handleFiles(Array.from(e.target.files)));
+    console.log('Found images in clipboard:', imageItems.length);
 
-    dropZone.addEventListener('dragover', e => {
-        e.preventDefault();
-        dropZone.classList.add('dragover');
-    });
-    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
-    dropZone.addEventListener('drop', e => {
-        e.preventDefault();
-        dropZone.classList.remove('dragover');
-        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-        if (files.length) handleFiles(files);
-    });
-
-    // Paste from clipboard support
-    document.addEventListener('paste', async e => {
-        e.preventDefault();
-        console.log('Paste event detected');
-
-        const items = e.clipboardData?.items;
-        if (!items) return;
-
-        const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
-        if (!imageItems.length) {
-            console.log('No images found in clipboard');
-            return;
+    try {
+        const files = [];
+        for (const item of imageItems) {
+            const blob = item.getAsFile();
+            if (blob) {
+                // Create a File object with a generated name
+                const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                files.push(file);
+            }
         }
 
-        console.log('Found images in clipboard:', imageItems.length);
-
-        try {
-            const files = [];
-            for (const item of imageItems) {
-                const blob = item.getAsFile();
-                if (blob) {
-                    // Create a File object with a generated name
-                    const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
-                    files.push(file);
-                }
-            }
-
-            if (files.length) {
-                console.log('Processing pasted images:', files.length);
-                handleFiles(files);
-            }
-        } catch (error) {
-            console.error('Error processing pasted images:', error);
-            alert('Помилка при обробці вставленого зображення: ' + error.message);
+        if (files.length) {
+            console.log('Processing pasted images:', files.length);
+            handleFiles(files);
         }
-    });
-
-    downloadBtn.addEventListener('click', () => {
-        const text = textOutput.value;
-        const blob = new Blob([text], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'analyzed_text.txt';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    });
-
-    clearBtn.addEventListener('click', () => {
-        textOutput.value = '';
-        resultDiv.style.display = 'none';
-    });
-
-    console.log('App initialized successfully!');
+    } catch (error) {
+        console.error('Error processing pasted images:', error);
+        alert('Помилка при обробці вставленого зображення: ' + error.message);
+    }
 });
+
+// Result controls
+downloadBtn.addEventListener('click', () => {
+    const text = textOutput.value;
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'analyzed_text.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+clearBtn.addEventListener('click', () => {
+    textOutput.value = '';
+    resultDiv.style.display = 'none';
+});
+
+console.log('App initialized successfully!');
