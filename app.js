@@ -483,7 +483,10 @@ console.log('DOM elements loaded, initializing...');
 initTheme();
 updateQuotaDisplay(quotaMsgDiv);
 setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
-initGoogleLogin('YOUR_GOOGLE_CLIENT_ID', loginBtn, userInfoSpan, quotaMsgDiv);
+
+// Get Google Client ID from environment variable or use placeholder
+const googleClientId = window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+initGoogleLogin(googleClientId, loginBtn, userInfoSpan, quotaMsgDiv);
 
 async function handleFiles(files) {
     if (!files || files.length === 0) return;
