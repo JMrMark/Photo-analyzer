@@ -5,7 +5,24 @@ const textOutput = document.getElementById('text-output');
 const downloadBtn = document.getElementById('download-btn');
 const clearBtn = document.getElementById('clear-btn');
 const modelSelect = document.getElementById('model-select');
+const themeSelect = document.getElementById('theme-select');
 const loadingDiv = document.getElementById('loading');
+
+// initialize theme from storage or default
+function applyTheme(theme) {
+    document.body.classList.remove('light', 'dark');
+    document.body.classList.add(theme);
+    themeSelect.value = theme;
+}
+
+const savedTheme = localStorage.getItem('theme') || 'light';
+applyTheme(savedTheme);
+
+themeSelect.addEventListener('change', () => {
+    const t = themeSelect.value;
+    applyTheme(t);
+    localStorage.setItem('theme', t);
+});
 
 dropZone.addEventListener('click', () => {
     fileInput.click();
