@@ -1,7 +1,6 @@
 // theme.js
 export function applyTheme(theme, selectElement) {
-    document.body.classList.remove('light', 'dark');
-    document.body.classList.add(theme);
+    document.documentElement.setAttribute('data-theme', theme);
     if (selectElement) selectElement.value = theme;
 }
 
