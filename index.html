@@ -14,10 +14,20 @@
             <p>Перетягніть фото тут</p>
             <input type="file" id="file-input" accept="image/*" style="display: none;">
         </div>
+        <div id="model-selection" class="model-selection">
+            <label for="model-select">Вибір моделі:</label>
+            <select id="model-select">
+                <option value="tesseract" selected>Tesseract</option>
+                <option value="fast">Tesseract (швидкий режим)</option>
+                <option value="custom">Кастомна модель</option>
+            </select>
+        </div>
+
         <div id="result" class="result" style="display: none;">
             <h2>Результат аналізу:</h2>
             <textarea id="text-output" readonly></textarea>
             <button id="download-btn">Завантажити текстовий файл</button>
+            <button id="clear-btn">Стерти текст</button>
         </div>
         <div id="loading" class="loading" style="display: none;">
             <p>Аналізую фото...</p>

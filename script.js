@@ -3,6 +3,8 @@ const fileInput = document.getElementById('file-input');
 const resultDiv = document.getElementById('result');
 const textOutput = document.getElementById('text-output');
 const downloadBtn = document.getElementById('download-btn');
+const clearBtn = document.getElementById('clear-btn');
+const modelSelect = document.getElementById('model-select');
 const loadingDiv = document.getElementById('loading');
 
 dropZone.addEventListener('click', () => {
@@ -98,9 +100,26 @@ async function processImage(file) {
         // Preprocess the image for better OCR
         const processedImage = await preprocessImage(file);
 
-        const { data: { text } } = await Tesseract.recognize(processedImage, 'ukr+eng', {
-            logger: m => console.log(m)
-        });
+        // Choose recognition strategy based on selected model
+        const model = modelSelect.value;
+        let recognitionOptions = { logger: m => console.log(m) };
+
+        if (model === 'fast') {
+            recognitionOptions = {
+                ...recognitionOptions,
+                tessedit_pageseg_mode: Tesseract.PSM.SINGLE_LINE, // example config
+                tessedit_char_whitelist: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+            };
+        } else if (model === 'custom') {
+            // custom model could apply different languages or config
+            recognitionOptions = {
+                ...recognitionOptions,
+                lang: 'ukr',
+                tessedit_char_blacklist: '!?@#$%^&*()'
+            };
+        }
+
+        const { data: { text } } = await Tesseract.recognize(processedImage, 'ukr+eng', recognitionOptions);
 
         textOutput.value = text;
         resultDiv.style.display = 'block';
@@ -123,4 +142,9 @@ downloadBtn.addEventListener('click', () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+});
+
+clearBtn.addEventListener('click', () => {
+    textOutput.value = '';
+    resultDiv.style.display = 'none';
 });
