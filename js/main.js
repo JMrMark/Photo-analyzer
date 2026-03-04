@@ -49,12 +49,19 @@ function handleFiles(files) {
     resultDiv.style.display = 'none';
     if (loadingDiv) loadingDiv.style.display = 'block';
 
+    const documentType = modelSelect.value;
+    const languageSelectEl = document.getElementById('language-select');
+    const enhanceCheckboxEl = document.getElementById('enhance-checkbox');
+    const language = languageSelectEl ? languageSelectEl.value : 'ukr+eng';
+    const enhance = enhanceCheckboxEl ? enhanceCheckboxEl.checked : true;
+
     (async () => {
         try {
             for (const file of files) {
-                console.log('Processing file:', file.name);
-                const text = await recognize(file, modelSelect.value);
-                textOutput.value += `\n\n=== ${file.name} ===\n` + text;
+                console.log('Processing file:', file.name, 'Type:', documentType, 'Lang:', language, 'Enhance:', enhance);
+                const result = await recognize(file, documentType, language, enhance);
+                const confidence = result.confidence ? `[${result.confidence.toFixed(1)}%]` : '';
+                textOutput.value += `\n\n=== ${file.name} ${confidence} ===\n` + result.text;
                 resultDiv.style.display = 'block';
             }
         } catch (error) {
@@ -118,6 +125,43 @@ clearBtn.addEventListener('click', () => {
     console.log('Clear clicked');
     textOutput.value = '';
     resultDiv.style.display = 'none';
+});
+
+// Paste from clipboard support
+document.addEventListener('paste', async e => {
+    e.preventDefault();
+    console.log('Paste event detected');
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+    if (!imageItems.length) {
+        console.log('No images found in clipboard');
+        return;
+    }
+
+    console.log('Found images in clipboard:', imageItems.length);
+
+    try {
+        const files = [];
+        for (const item of imageItems) {
+            const blob = item.getAsFile();
+            if (blob) {
+                // Create a File object with a generated name
+                const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                files.push(file);
+            }
+        }
+
+        if (files.length) {
+            console.log('Processing pasted images:', files.length);
+            handleFiles(files);
+        }
+    } catch (error) {
+        console.error('Error processing pasted images:', error);
+        alert('Помилка при обробці вставленого зображення: ' + error.message);
+    }
 });
 
 console.log('Main module initialized successfully!');

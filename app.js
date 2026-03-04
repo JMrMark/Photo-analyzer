@@ -367,6 +367,43 @@ document.addEventListener('DOMContentLoaded', () => {
         if (files.length) handleFiles(files);
     });
 
+    // Paste from clipboard support
+    document.addEventListener('paste', async e => {
+        e.preventDefault();
+        console.log('Paste event detected');
+
+        const items = e.clipboardData?.items;
+        if (!items) return;
+
+        const imageItems = Array.from(items).filter(item => item.type.startsWith('image/'));
+        if (!imageItems.length) {
+            console.log('No images found in clipboard');
+            return;
+        }
+
+        console.log('Found images in clipboard:', imageItems.length);
+
+        try {
+            const files = [];
+            for (const item of imageItems) {
+                const blob = item.getAsFile();
+                if (blob) {
+                    // Create a File object with a generated name
+                    const file = new File([blob], `pasted-image-${Date.now()}.png`, { type: blob.type });
+                    files.push(file);
+                }
+            }
+
+            if (files.length) {
+                console.log('Processing pasted images:', files.length);
+                handleFiles(files);
+            }
+        } catch (error) {
+            console.error('Error processing pasted images:', error);
+            alert('Помилка при обробці вставленого зображення: ' + error.message);
+        }
+    });
+
     downloadBtn.addEventListener('click', () => {
         const text = textOutput.value;
         const blob = new Blob([text], { type: 'text/plain' });

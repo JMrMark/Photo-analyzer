@@ -34,7 +34,7 @@
 
     <div class="container">
         <h1>Аналізатор тексту на фото</h1>
-        <p>Перетягніть фото сюди або натисніть, щоб вибрати файл.</p>
+        <p>Перетягніть фото сюди, натисніть щоб вибрати файл, або вставте зображення з буфера (Ctrl+V).</p>
         <div id="user-info" class="user-info">
             <button id="login-btn">Увійти через Google</button>
             <span id="status-msg">(гість)</span>
@@ -42,6 +42,7 @@
         </div>
         <div id="drop-zone" class="drop-zone">
             <p>Перетягніть фото тут</p>
+            <p class="paste-hint">або вставте з буфера (Ctrl+V)</p>
             <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
         </div>
         <div id="model-selection" class="model-selection">
