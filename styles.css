@@ -28,12 +28,27 @@ body.dark {
     left: 10px;
 }
 
-.theme-toggle select {
-    padding: 4px 8px;
-    border-radius: 4px;
-    border: 1px solid #ccc;
+.theme-toggle select,
+.model-selection select {
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 2px solid var(--accent-color);
     background: inherit;
     color: inherit;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20viewBox%3D'0%200%204%205'%20xmlns%3D'http://www.w3.org/2000/svg'%3E%3Cpath%20d%3D'M0%200l2%205%204-5z'%20fill%3D'%23%23007bff'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    padding-right: 30px;
+}
+.model-selection {
+    margin: 10px 0;
+}
+.model-selection label {
+    margin-right: 8px;
+    font-weight: bold;
 }
 
 .user-info {
