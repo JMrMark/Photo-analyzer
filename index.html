@@ -45,12 +45,32 @@
             <input type="file" id="file-input" accept="image/*" multiple style="display: none;">
         </div>
         <div id="model-selection" class="model-selection">
-            <label for="model-select">Вибір моделі:</label>
-            <select id="model-select">
-                <option value="tesseract" selected>Tesseract</option>
-                <option value="fast">Tesseract (швидкий режим)</option>
-                <option value="custom">Кастомна модель</option>
-            </select>
+            <div class="settings-row">
+                <div>
+                    <label for="model-select">Тип документа:</label>
+                    <select id="model-select">
+                        <option value="document" selected>Документ/Текст</option>
+                        <option value="receipt">Квитанція/Чек</option>
+                        <option value="handwriting">Рукопис</option>
+                        <option value="quality">Низька якість</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="language-select">Мова:</label>
+                    <select id="language-select">
+                        <option value="ukr+eng" selected>Українська + Англійська</option>
+                        <option value="ukr">Лише українська</option>
+                        <option value="eng">Лише англійська</option>
+                        <option value="rus">Російська</option>
+                    </select>
+                </div>
+            </div>
+            <div class="settings-row">
+                <label>
+                    <input type="checkbox" id="enhance-checkbox" checked>
+                    Посилене розпізнавання
+                </label>
+            </div>
         </div>
 
         <div id="result" class="result" style="display: none;">

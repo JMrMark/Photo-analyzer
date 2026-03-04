@@ -109,7 +109,7 @@ function initGoogleLogin(btnElement, userInfoElem, quotaElem) {
 }
 
 // ========== OCR MODULE ==========
-async function preprocessImage(file) {
+async function preprocessImage(file, documentType = 'document', enhance = true) {
     return new Promise((resolve, reject) => {
         try {
             const img = new Image();
@@ -117,38 +117,119 @@ async function preprocessImage(file) {
                 try {
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
+                    
+                    let scale = 1;
+                    const minSize = 500;
+                    if (img.width < minSize || img.height < minSize) {
+                        scale = Math.ceil(minSize / Math.min(img.width, img.height));
+                    }
+                    
+                    canvas.width = img.width * scale;
+                    canvas.height = img.height * scale;
 
-                    ctx.drawImage(img, 0, 0);
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
                     let imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
                     let data = imageData.data;
 
-                    // Grayscale
-                    for (let i = 0; i < data.length; i += 4) {
-                        const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
-                        data[i] = gray;
-                        data[i + 1] = gray;
-                        data[i + 2] = gray;
-                    }
+                    if (enhance) {
+                        // Grayscale
+                        for (let i = 0; i < data.length; i += 4) {
+                            const gray = 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+                            data[i] = gray;
+                            data[i + 1] = gray;
+                            data[i + 2] = gray;
+                        }
 
-                    // Contrast
-                    const contrast = 1.5;
-                    const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
-                    for (let i = 0; i < data.length; i += 4) {
-                        data[i] = factor * (data[i] - 128) + 128;
-                        data[i + 1] = factor * (data[i + 1] - 128) + 128;
-                        data[i + 2] = factor * (data[i + 2] - 128) + 128;
-                    }
+                        // Adaptive contrast
+                        const blockSize = 32;
+                        const width = canvas.width;
+                        const height = canvas.height;
+                        for (let by = 0; by < height; by += blockSize) {
+                            for (let bx = 0; bx < width; bx += blockSize) {
+                                const endY = Math.min(by + blockSize, height);
+                                const endX = Math.min(bx + blockSize, width);
 
-                    // Binarization
-                    const threshold = 128;
-                    for (let i = 0; i < data.length; i += 4) {
-                        const brightness = data[i];
-                        const newValue = brightness > threshold ? 255 : 0;
-                        data[i] = newValue;
-                        data[i + 1] = newValue;
-                        data[i + 2] = newValue;
+                                let min = 255, max = 0;
+                                for (let py = by; py < endY; py++) {
+                                    for (let px = bx; px < endX; px++) {
+                                        const idx = (py * width + px) * 4;
+                                        const val = data[idx];
+                                        min = Math.min(min, val);
+                                        max = Math.max(max, val);
+                                    }
+                                }
+
+                                const range = max - min || 1;
+                                for (let py = by; py < endY; py++) {
+                                    for (let px = bx; px < endX; px++) {
+                                        const idx = (py * width + px) * 4;
+                                        const val = data[idx];
+                                        const enhanced = ((val - min) / range) * 255;
+                                        data[idx] = enhanced;
+                                        data[idx + 1] = enhanced;
+                                        data[idx + 2] = enhanced;
+                                    }
+                                }
+                            }
+                        }
+
+                        // Otsu threshold
+                        const histogram = new Array(256).fill(0);
+                        for (let i = 0; i < data.length; i += 4) {
+                            histogram[data[i]]++;
+                        }
+
+                        let threshold = 128;
+                        let sum = 0;
+                        for (let i = 0; i < 256; i++) sum += i * histogram[i];
+
+                        let sumB = 0, wB = 0, max = 0;
+                        for (let i = 0; i < 256; i++) {
+                            wB += histogram[i];
+                            if (wB === 0) continue;
+                            const wF = data.length / 4 - wB;
+                            if (wF === 0) break;
+                            sumB += i * histogram[i];
+                            const mB = sumB / wB;
+                            const mF = (sum - sumB) / wF;
+                            const between = wB * wF * Math.pow(mB - mF, 2);
+                            if (between > max) {
+                                max = between;
+                                threshold = i;
+                            }
+                        }
+
+                        // Binarization
+                        for (let i = 0; i < data.length; i += 4) {
+                            const val = data[i] > threshold ? 255 : 0;
+                            data[i] = val;
+                            data[i + 1] = val;
+                            data[i + 2] = val;
+                        }
+                    } else {
+                        // Simple preprocessing
+                        for (let i = 0; i < data.length; i += 4) {
+                            const gray = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+                            data[i] = gray;
+                            data[i + 1] = gray;
+                            data[i + 2] = gray;
+                        }
+
+                        const contrast = 1.2;
+                        const factor = (259 * (contrast + 255)) / (255 * (259 - contrast));
+                        for (let i = 0; i < data.length; i += 4) {
+                            data[i] = Math.max(0, Math.min(255, factor * (data[i] - 128) + 128));
+                            data[i + 1] = Math.max(0, Math.min(255, factor * (data[i + 1] - 128) + 128));
+                            data[i + 2] = Math.max(0, Math.min(255, factor * (data[i + 2] - 128) + 128));
+                        }
+
+                        const threshold = 128;
+                        for (let i = 0; i < data.length; i += 4) {
+                            const val = data[i] > threshold ? 255 : 0;
+                            data[i] = val;
+                            data[i + 1] = val;
+                            data[i + 2] = val;
+                        }
                     }
 
                     ctx.putImageData(imageData, 0, 0);
@@ -165,23 +246,39 @@ async function preprocessImage(file) {
     });
 }
 
-async function recognize(file, model) {
+async function recognize(file, documentType = 'document', language = 'ukr+eng', enhance = true) {
     try {
-        console.log('Starting recognition for:', file.name);
-        const processedImage = await preprocessImage(file);
-        console.log('Image preprocessed');
+        console.log('Advanced recognition:', file.name, 'Type:', documentType);
+        const processedImage = await preprocessImage(file, documentType, enhance);
         
         let recognitionOptions = { logger: m => console.log(m) };
-        if (model === 'fast') {
-            recognitionOptions.tessedit_pageseg_mode = 7;
-        } else if (model === 'custom') {
-            recognitionOptions.lang = 'ukr';
+
+        switch (documentType) {
+            case 'receipt':
+                recognitionOptions.tessedit_pageseg_mode = 6;
+                break;
+            case 'handwriting':
+                recognitionOptions.tessedit_pageseg_mode = 3;
+                break;
+            case 'quality':
+                recognitionOptions.tessedit_pageseg_mode = 11;
+                break;
+            default:
+                recognitionOptions.tessedit_pageseg_mode = 3;
         }
 
-        console.log('Starting Tesseract recognition...');
-        const { data: { text } } = await Tesseract.recognize(processedImage, 'ukr+eng', recognitionOptions);
-        console.log('Recognition complete');
-        return text;
+        console.log('Recognition with language:', language);
+        const { data: { text, confidence } } = await Tesseract.recognize(processedImage, language, recognitionOptions);
+        
+        // Post-process text
+        let processed = text
+            .replace(/\s{2,}/g, ' ')
+            .trim();
+
+        return {
+            text: processed,
+            confidence: Math.max(0, Math.min(100, confidence || 0))
+        };
     } catch (err) {
         console.error('Recognition error:', err);
         throw err;
@@ -200,6 +297,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const clearBtn = document.getElementById('clear-btn');
     const modelSelect = document.getElementById('model-select');
     const themeSelect = document.getElementById('theme-select');
+    const languageSelect = document.getElementById('language-select');
+    const enhanceCheckbox = document.getElementById('enhance-checkbox');
     const loadingDiv = document.getElementById('loading');
     const userInfoSpan = document.getElementById('status-msg');
     const quotaMsgDiv = document.getElementById('quota-msg');
@@ -230,12 +329,17 @@ document.addEventListener('DOMContentLoaded', () => {
         resultDiv.style.display = 'none';
         if (loadingDiv) loadingDiv.style.display = 'block';
 
+        const documentType = modelSelect.value;
+        const language = languageSelect.value;
+        const enhance = enhanceCheckbox.checked;
+
         (async () => {
             try {
                 for (const file of files) {
-                    console.log('Processing file:', file.name);
-                    const text = await recognize(file, modelSelect.value);
-                    textOutput.value += `\n\n=== ${file.name} ===\n` + text;
+                    console.log('Processing file:', file.name, 'Type:', documentType, 'Lang:', language, 'Enhance:', enhance);
+                    const result = await recognize(file, documentType, language, enhance);
+                    const confidence = result.confidence ? `[${result.confidence.toFixed(1)}%]` : '';
+                    textOutput.value += `\n\n=== ${file.name} ${confidence} ===\n` + result.text;
                     resultDiv.style.display = 'block';
                 }
             } catch (error) {
