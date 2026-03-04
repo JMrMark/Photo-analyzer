@@ -3,7 +3,9 @@
 
 console.log('OCR App starting...');
 
-// ========== THEME MODULE ==========
+// Make functions global for ocr.js module
+window.updateProgress = updateProgress;
+window.resetProgress = resetProgress;
 function applyTheme(theme) {
     document.body.classList.remove('dark-theme');
     if (theme === 'dark') {
@@ -264,7 +266,16 @@ async function recognize(file, documentType = 'document', language = 'ukr+eng', 
         console.log('Advanced recognition:', file.name, 'Type:', documentType);
         const processedImage = await preprocessImage(file, documentType, enhance);
         
-        let recognitionOptions = { logger: m => console.log(m) };
+        let recognitionOptions = {
+            logger: m => {
+                console.log(m);
+                // Update progress bar based on Tesseract messages
+                if (m.status === 'recognizing text') {
+                    const progress = Math.min(90, Math.max(10, m.progress * 100));
+                    updateProgress(progress);
+                }
+            }
+        };
 
         switch (documentType) {
             case 'receipt':
@@ -341,9 +352,7 @@ document.addEventListener('DOMContentLoaded', () => {
         textOutput.value = '';
         resultDiv.style.display = 'none';
         if (loadingDiv) loadingDiv.style.display = 'block';
-
-        const documentType = modelSelect.value;
-        const language = languageSelect.value;
+    resetProgress(); // Reset progress at start
         const enhance = enhanceCheckbox.checked;
 
         (async () => {
@@ -359,6 +368,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 console.error('Error:', error);
                 alert('Помилка: ' + error.message);
             } finally {
+                updateProgress(100); // Complete progress
                 if (loadingDiv) loadingDiv.style.display = 'none';
             }
         })();

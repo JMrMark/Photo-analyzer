@@ -5,7 +5,21 @@ import { initTheme } from './theme.js';
 
 console.log('Main module loading...');
 
-// Get DOM elements
+// Progress functions
+function updateProgress(percent) {
+    const progressFill = document.getElementById('progress-fill');
+    if (progressFill) {
+        progressFill.style.width = percent + '%';
+    }
+}
+
+function resetProgress() {
+    updateProgress(0);
+}
+
+// Make functions global for ocr.js module
+window.updateProgress = updateProgress;
+window.resetProgress = resetProgress;
 const dropZone = document.getElementById('drop-zone');
 const fileInput = document.getElementById('file-input');
 const resultDiv = document.getElementById('result');
@@ -48,6 +62,7 @@ function handleFiles(files) {
     textOutput.value = '';
     resultDiv.style.display = 'none';
     if (loadingDiv) loadingDiv.style.display = 'block';
+    resetProgress(); // Reset progress at start
 
     const documentType = modelSelect.value;
     const languageSelectEl = document.getElementById('language-select');
@@ -68,6 +83,7 @@ function handleFiles(files) {
             console.error('Error processing files:', error);
             alert('Помилка при обробці: ' + error.message);
         } finally {
+            updateProgress(100); // Complete progress
             if (loadingDiv) loadingDiv.style.display = 'none';
         }
     })();

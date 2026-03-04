@@ -265,7 +265,14 @@ export async function recognize(file, documentType = 'document', language = 'ukr
         console.log('Image preprocessed');
 
         let recognitionOptions = {
-            logger: m => console.log(m),
+            logger: m => {
+                console.log(m);
+                // Update progress if function exists (for modular version)
+                if (typeof window.updateProgress === 'function' && m.status === 'recognizing text') {
+                    const progress = Math.min(90, Math.max(10, m.progress * 100));
+                    window.updateProgress(progress);
+                }
+            },
         };
 
         // Configure based on document type

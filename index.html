@@ -81,7 +81,11 @@
             <button id="clear-btn">Стерти текст</button>
         </div>
         <div id="loading" class="loading" style="display: none;">
-            <p>Аналізую фото...</p>
+            <div class="spinner"></div>
+            <p class="loading-text">Аналізую фото<span class="dots">...</span></p>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
         </div>
     </div>
     <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
