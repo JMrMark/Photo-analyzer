@@ -1,8 +1,0 @@
-{
-  "buildCommand": "echo 'Static site - no build needed'",
-  "outputDirectory": ".",
-  "framework": null,
-  "env": {
-    "GOOGLE_CLIENT_ID": "@google_client_id"
-  }
-}

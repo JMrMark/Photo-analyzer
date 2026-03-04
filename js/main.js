@@ -46,8 +46,8 @@ initTheme(themeSelect);
 updateQuotaDisplay(quotaMsgDiv);
 setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
 
-// Get Google Client ID from environment variable or use placeholder
-const googleClientId = window.GOOGLE_CLIENT_ID || 'YOUR_GOOGLE_CLIENT_ID';
+// Get Google Client ID - REPLACE THIS WITH YOUR ACTUAL GOOGLE CLIENT ID
+const googleClientId = 'YOUR_GOOGLE_CLIENT_ID'; // ← ЗАМІНІТЬ НА РЕАЛЬНИЙ CLIENT ID З GOOGLE CLOUD CONSOLE
 initGoogleLogin(googleClientId, loginBtn, userInfoSpan, quotaMsgDiv);
 
 function handleFiles(files) {
