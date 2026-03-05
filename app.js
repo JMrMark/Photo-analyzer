@@ -433,7 +433,14 @@ async function recognize(file, lang = 'ukr+eng', documentType = 'document') {
         });
 
         console.log('OCR recognition completed');
-        return result.data.text;
+        let text = result.data.text;
+        console.log('Raw OCR output length', text.length, 'content', text);
+        // remove artifact if present
+        if(text.includes('11111011')){
+            console.log('artifact pattern detected, stripping');
+            text = text.replace(/11111011/g, '');
+        }
+        return text;
     } catch (error) {
         console.error('OCR recognition failed:', error);
         throw error;
