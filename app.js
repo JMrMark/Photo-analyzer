@@ -41,8 +41,8 @@ function initTheme() {
 
 // ========== AUTH MODULE ==========
 let userState = { isVIP: false };
-const QUOTA_LIMIT = 5;
-const REFILL_INTERVAL = 5 * 60 * 1000;
+const QUOTA_LIMIT = 10;
+const REFILL_INTERVAL = 3 * 60 * 1000;
 
 function loadQuota() {
     const data = JSON.parse(localStorage.getItem('quota') || '{}');
