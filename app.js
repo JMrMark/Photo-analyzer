@@ -435,11 +435,18 @@ async function recognize(file, lang = 'ukr+eng', documentType = 'document') {
         console.log('OCR recognition completed');
         let text = result.data.text;
         console.log('Raw OCR output length', text.length, 'content', text);
+        // debug nearby codes
+        const idx = text.indexOf('11111011');
+        if (idx !== -1) {
+            console.log('pattern at', idx, 'codes', text.slice(Math.max(0, idx-5), idx+13).split('').map(c=>c.charCodeAt(0)));
+        }
         // remove artifact if present
         if(text.includes('11111011')){
             console.log('artifact pattern detected, stripping');
             text = text.replace(/11111011/g, '');
         }
+        // also strip any long binary words
+        text = text.replace(/\b[01]{6,}\b/g, '');
         return text;
     } catch (error) {
         console.error('OCR recognition failed:', error);
