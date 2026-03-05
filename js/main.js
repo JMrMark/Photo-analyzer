@@ -78,6 +78,8 @@ function handleFiles(files) {
             for (const file of files) {
                 console.log('Processing file:', file.name, 'Type:', documentType, 'Lang:', language, 'Enhance:', enhance);
                 const result = await recognize(file, documentType, language, enhance);
+                console.log('Result received (length', result.text.length + '):', result.text.substring(0, 100) + (result.text.length > 100 ? '...' : ''));
+                if(result.text.includes('11111011')) console.warn('Post-processed result still contains artifact pattern!');
                 const confidence = result.confidence ? `[${result.confidence.toFixed(1)}%]` : '';
                 textOutput.value += `\n\n=== ${file.name} ${confidence} ===\n` + result.text;
                 resultDiv.style.display = 'block';
