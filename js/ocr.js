@@ -237,6 +237,13 @@ function morphologicalClose(data, width, height) {
 
 // Post-process OCR results
 function postProcessText(text) {
+    console.log('postProcessText input length', text.length);
+    const idx = text.indexOf('11111011');
+    if (idx !== -1) {
+        console.log('artifact pattern found at', idx, 'context codes',
+            text.slice(Math.max(0, idx-5), idx+13).split('').map(c=>c.charCodeAt(0)));
+    }
+
     // Common OCR error corrections
     const corrections = {
         'l0': '10', // lowercase L followed by 0 -> 10
@@ -251,6 +258,10 @@ function postProcessText(text) {
     for (const [wrong, right] of Object.entries(corrections)) {
         result = result.replace(new RegExp(wrong, 'g'), right);
     }
+
+    // Strip explicit artifact and binary sequences
+    result = result.replace(/11111011/g, '');
+    result = result.replace(/\b[01]{6,}\b/g, '');
 
     // Remove multiple spaces
     result = result.replace(/\s{2,}/g, ' ');
