@@ -499,7 +499,7 @@ updateQuotaDisplay(quotaMsgDiv);
 setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
 
 // Get Google Client ID - REPLACE THIS WITH YOUR ACTUAL GOOGLE CLIENT ID
-const googleClientId = 'YOUR_GOOGLE_CLIENT_ID'; // ← ЗАМІНІТЬ НА РЕАЛЬНИЙ CLIENT ID З GOOGLE CLOUD CONSOLE
+const googleClientId = window.googleClientId || 'YOUR_GOOGLE_CLIENT_ID'; // ← ЗАМІНІТЬ НА РЕАЛЬНИЙ CLIENT ID З GOOGLE CLOUD CONSOLE
 initGoogleLogin(googleClientId, loginBtn, userInfoSpan, quotaMsgDiv);
 
 async function handleFiles(files) {

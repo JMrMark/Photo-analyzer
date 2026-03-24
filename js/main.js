@@ -2,6 +2,7 @@
 import { recognize } from './ocr.js';
 import { canUpload, updateQuotaDisplay, initGoogleLogin, REFILL_INTERVAL } from './auth.js';
 import { initTheme } from './theme.js';
+import { googleClientId } from './config.js';
 
 console.log('Main module loading...');
 
@@ -46,8 +47,7 @@ initTheme(themeSelect);
 updateQuotaDisplay(quotaMsgDiv);
 setInterval(() => updateQuotaDisplay(quotaMsgDiv), 10000);
 
-// Get Google Client ID - REPLACE THIS WITH YOUR ACTUAL GOOGLE CLIENT ID
-const googleClientId = 'YOUR_GOOGLE_CLIENT_ID'; // ← ЗАМІНІТЬ НА РЕАЛЬНИЙ CLIENT ID З GOOGLE CLOUD CONSOLE
+// Initialize Google Login
 initGoogleLogin(googleClientId, loginBtn, userInfoSpan, quotaMsgDiv);
 
 function handleFiles(files) {

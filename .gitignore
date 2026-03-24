@@ -1,0 +1,13 @@
+# Конфіденційні файли
+.env
+.env.local
+.env.production
+js/config.js
+js/config-nonmodule.js
+
+# Інші типові ігнори
+node_modules/
+*.log
+.DS_Store
+.vscode/
+.idea/
