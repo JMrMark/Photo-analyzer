@@ -5,8 +5,8 @@ let userState = {
     isVIP: false
 };
 
-export const QUOTA_LIMIT = 10;
-export const REFILL_INTERVAL = 3 * 60 * 1000;
+export const QUOTA_LIMIT = 5;
+export const REFILL_INTERVAL = 5 * 60 * 1000;
 
 function loadQuota() {
     const data = JSON.parse(localStorage.getItem('quota') || '{}');
